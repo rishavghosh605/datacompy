@@ -321,17 +321,34 @@ class SparkCompare:
             col_type = df.select(column).dtypes[0][1]
             print((format_pattern + "  {:13s}").format(column, col_type), file=myfile)
 
+    #Basically checks if the columns with same names in both the tables have same datatypes
+    #This will not check for tables where columns which have the same name but different column names
     def _columns_with_matching_schema(self):
         """ This function will identify the columns which has matching schema"""
         col_schema_match = {}
+        """
+        df = pd.DataFrame({'float': [1.0],
+                   'int': [1],
+                   'datetime': [pd.Timestamp('20180310')],
+                   'string': ['foo']})
+        
+        dtypes=>"Something like this"float              float64
+                                        int                  int64
+                                        datetime    datetime64[ns]
+                                        string              object
+                                        dtype: object"""
+        
+        
         base_columns_dict = dict(self.base_df.dtypes)
         compare_columns_dict = dict(self.compare_df.dtypes)
 
         for base_row, base_type in base_columns_dict.items():
+            #if the same name row is in compare_df too
             if base_row in compare_columns_dict:
+                #If yes then checks if the datatype of both of them are same
                 if base_type in compare_columns_dict.get(base_row):
                     col_schema_match[base_row] = compare_columns_dict.get(base_row)
-
+        #Returns a dictionary of column_name:datatype for those columns whose schema match in both tables
         return col_schema_match
 
     def _columns_with_schemadiff(self):
@@ -404,15 +421,19 @@ class SparkCompare:
 
         return self._rows_only_compare
 
+    #basically selects the columns thare to be displayed like selec a,b
     def _generate_select_statement(self, match_data=True):
         """This function is to generate the select statement to be used later in the query."""
         base_only = list(set(self.base_df.columns) - set(self.compare_df.columns))
         compare_only = list(set(self.compare_df.columns) - set(self.base_df.columns))
+        #How does this chain operation work?
         sorted_list = sorted(list(chain(base_only, compare_only, self.columns_in_both)))
         select_statement = ""
 
         for column_name in sorted_list:
+            #What is columns compared?
             if column_name in self.columns_compared:
+                #kind of the same thing is happening with match data value false or true no?
                 if match_data:
                     select_statement = select_statement + ",".join(
                         [self._create_case_statement(name=column_name)]
